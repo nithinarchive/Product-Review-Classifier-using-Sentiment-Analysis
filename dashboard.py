@@ -21,14 +21,18 @@ except Exception as e:
     st.error(f"Failed to load CSV: {e}")
     st.stop()
 
-# Clean column names
-df.columns = df.columns.str.strip().str.lower()
+# Auto-detect text column for reviews
+text_col = None
+for col in df.columns:
+    if df[col].dtype == object:
+        text_col = col
+        break
 
-if 'review' not in df.columns:
-    st.error("CSV must contain a 'review' column!")
+if not text_col:
+    st.error("No text/review column found in CSV!")
     st.stop()
 
-df['Review'] = df['review'].astype(str)
+df['Review'] = df[text_col].astype(str)
 df['Sentiment'] = df['Review'].apply(lambda x: sia.polarity_scores(x)['compound'])
 df['Sentiment_Label'] = df['Sentiment'].apply(lambda x: 'Positive' if x > 0 else ('Negative' if x < 0 else 'Neutral'))
 
@@ -37,10 +41,18 @@ st.dataframe(df.head())
 
 # Sidebar filters
 st.sidebar.header("Filters")
-sentiments = st.sidebar.multiselect("Select Sentiments:", options=df['Sentiment_Label'].unique(), default=df['Sentiment_Label'].unique())
-if 'rating' in df.columns:
-    rating_min, rating_max = st.sidebar.slider("Select Rating Range:", float(df['rating'].min()), float(df['rating'].max()), (float(df['rating'].min()), float(df['rating'].max())))
-    df_filtered = df[(df['Sentiment_Label'].isin(sentiments)) & (df['rating'] >= rating_min) & (df['rating'] <= rating_max)]
+sentiments = st.sidebar.multiselect(
+    "Select Sentiments:", options=df['Sentiment_Label'].unique(), default=df['Sentiment_Label'].unique()
+)
+
+if 'rating' in df.columns or 'Rating' in df.columns:
+    rating_col = 'rating' if 'rating' in df.columns else 'Rating'
+    rating_min, rating_max = st.sidebar.slider(
+        "Select Rating Range:", float(df[rating_col].min()), float(df[rating_col].max()),
+        (float(df[rating_col].min()), float(df[rating_col].max()))
+    )
+    df_filtered = df[(df['Sentiment_Label'].isin(sentiments)) & 
+                     (df[rating_col] >= rating_min) & (df[rating_col] <= rating_max)]
 else:
     df_filtered = df[df['Sentiment_Label'].isin(sentiments)]
 
@@ -77,10 +89,11 @@ else:
     st.info("No reviews to generate Word Cloud.")
 
 # Rating vs Sentiment
-if 'rating' in df.columns:
+if 'rating' in df.columns or 'Rating' in df.columns:
+    rating_col = 'rating' if 'rating' in df.columns else 'Rating'
     st.subheader("📊 Rating vs Sentiment")
     fig3, ax3 = plt.subplots(figsize=(8,5))
-    sns.boxplot(x='rating', y='Sentiment', hue='Sentiment_Label', data=df_filtered, palette='viridis', ax=ax3)
+    sns.boxplot(x=rating_col, y='Sentiment', hue='Sentiment_Label', data=df_filtered, palette='viridis', ax=ax3)
     ax3.set_title("Rating vs Sentiment Distribution")
     st.pyplot(fig3)
 
