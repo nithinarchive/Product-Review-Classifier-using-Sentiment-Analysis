@@ -36,6 +36,15 @@ df['Review'] = df[text_col].astype(str)
 df['Sentiment'] = df['Review'].apply(lambda x: sia.polarity_scores(x)['compound'])
 df['Sentiment_Label'] = df['Sentiment'].apply(lambda x: 'Positive' if x > 0 else ('Negative' if x < 0 else 'Neutral'))
 
+# Ensure rating column is numeric and clean
+rating_col = None
+if 'rating' in df.columns or 'Rating' in df.columns:
+    rating_col = 'rating' if 'rating' in df.columns else 'Rating'
+    df[rating_col] = pd.to_numeric(df[rating_col], errors='coerce')
+    df = df.dropna(subset=[rating_col, 'Sentiment'])
+else:
+    df = df.dropna(subset=['Sentiment'])
+
 st.subheader("Preview of Data")
 st.dataframe(df.head())
 
@@ -45,18 +54,13 @@ sentiments = st.sidebar.multiselect(
     "Select Sentiments:", options=df['Sentiment_Label'].unique(), default=df['Sentiment_Label'].unique()
 )
 
-if 'rating' in df.columns or 'Rating' in df.columns:
-    rating_col = 'rating' if 'rating' in df.columns else 'Rating'
-    df[rating_col] = pd.to_numeric(df[rating_col], errors='coerce')  # convert to numeric
-    df = df.dropna(subset=[rating_col])  # drop non-numeric ratings
-
+if rating_col:
     rating_min, rating_max = st.sidebar.slider(
         "Select Rating Range:",
         float(df[rating_col].min()),
         float(df[rating_col].max()),
         (float(df[rating_col].min()), float(df[rating_col].max()))
     )
-
     df_filtered = df[(df['Sentiment_Label'].isin(sentiments)) &
                      (df[rating_col] >= rating_min) & (df[rating_col] <= rating_max)]
 else:
@@ -95,8 +99,7 @@ else:
     st.info("No reviews to generate Word Cloud.")
 
 # Rating vs Sentiment
-if 'rating' in df.columns or 'Rating' in df.columns:
-    rating_col = 'rating' if 'rating' in df.columns else 'Rating'
+if rating_col:
     st.subheader("📊 Rating vs Sentiment")
     fig3, ax3 = plt.subplots(figsize=(8,5))
     sns.boxplot(x=rating_col, y='Sentiment', hue='Sentiment_Label', data=df_filtered, palette='viridis', ax=ax3)
