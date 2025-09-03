@@ -22,13 +22,13 @@ except Exception as e:
     st.stop()
 
 # Clean column names
-df.columns = df.columns.str.strip()
+df.columns = df.columns.str.strip().str.lower()
 
-if 'Review' not in df.columns:
-    st.error("CSV must contain a 'Review' column!")
+if 'review' not in df.columns:
+    st.error("CSV must contain a 'review' column!")
     st.stop()
 
-df['Review'] = df['Review'].astype(str)
+df['Review'] = df['review'].astype(str)
 df['Sentiment'] = df['Review'].apply(lambda x: sia.polarity_scores(x)['compound'])
 df['Sentiment_Label'] = df['Sentiment'].apply(lambda x: 'Positive' if x > 0 else ('Negative' if x < 0 else 'Neutral'))
 
@@ -38,9 +38,9 @@ st.dataframe(df.head())
 # Sidebar filters
 st.sidebar.header("Filters")
 sentiments = st.sidebar.multiselect("Select Sentiments:", options=df['Sentiment_Label'].unique(), default=df['Sentiment_Label'].unique())
-if 'Rating' in df.columns:
-    rating_min, rating_max = st.sidebar.slider("Select Rating Range:", float(df['Rating'].min()), float(df['Rating'].max()), (float(df['Rating'].min()), float(df['Rating'].max())))
-    df_filtered = df[(df['Sentiment_Label'].isin(sentiments)) & (df['Rating'] >= rating_min) & (df['Rating'] <= rating_max)]
+if 'rating' in df.columns:
+    rating_min, rating_max = st.sidebar.slider("Select Rating Range:", float(df['rating'].min()), float(df['rating'].max()), (float(df['rating'].min()), float(df['rating'].max())))
+    df_filtered = df[(df['Sentiment_Label'].isin(sentiments)) & (df['rating'] >= rating_min) & (df['rating'] <= rating_max)]
 else:
     df_filtered = df[df['Sentiment_Label'].isin(sentiments)]
 
@@ -77,10 +77,10 @@ else:
     st.info("No reviews to generate Word Cloud.")
 
 # Rating vs Sentiment
-if 'Rating' in df.columns:
+if 'rating' in df.columns:
     st.subheader("📊 Rating vs Sentiment")
     fig3, ax3 = plt.subplots(figsize=(8,5))
-    sns.boxplot(x='Rating', y='Sentiment', hue='Sentiment_Label', data=df_filtered, palette='viridis', ax=ax3)
+    sns.boxplot(x='rating', y='Sentiment', hue='Sentiment_Label', data=df_filtered, palette='viridis', ax=ax3)
     ax3.set_title("Rating vs Sentiment Distribution")
     st.pyplot(fig3)
 
