@@ -12,10 +12,21 @@ sns.set_style("whitegrid")
 
 st.set_page_config(page_title="Product Review Sentiment Dashboard", layout="wide")
 st.title("🚀 Product Review Sentiment Analysis Dashboard")
-st.markdown("This dashboard analyzes Reviews.csv to explore sentiments and ratings of product reviews!")
+st.markdown("Analyzing product reviews from `Reviews.csv` hosted on GitHub!")
 
 url = "https://raw.githubusercontent.com/nithinarchive/Product-Review-Classifier-using-Sentiment-Analysis/main/Reviews.csv"
-df = pd.read_csv(url)
+try:
+    df = pd.read_csv(url)
+except Exception as e:
+    st.error(f"Failed to load CSV: {e}")
+    st.stop()
+
+# Clean column names
+df.columns = df.columns.str.strip()
+
+if 'Review' not in df.columns:
+    st.error("CSV must contain a 'Review' column!")
+    st.stop()
 
 df['Review'] = df['Review'].astype(str)
 df['Sentiment'] = df['Review'].apply(lambda x: sia.polarity_scores(x)['compound'])
@@ -24,6 +35,7 @@ df['Sentiment_Label'] = df['Sentiment'].apply(lambda x: 'Positive' if x > 0 else
 st.subheader("Preview of Data")
 st.dataframe(df.head())
 
+# Sidebar filters
 st.sidebar.header("Filters")
 sentiments = st.sidebar.multiselect("Select Sentiments:", options=df['Sentiment_Label'].unique(), default=df['Sentiment_Label'].unique())
 if 'Rating' in df.columns:
@@ -35,12 +47,15 @@ else:
 st.subheader("Filtered Data")
 st.dataframe(df_filtered)
 
+# Metrics
 st.subheader("📊 Overview Metrics")
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 col1.metric("Total Reviews", len(df_filtered))
 col2.metric("Positive Reviews", len(df_filtered[df_filtered['Sentiment_Label'] == 'Positive']))
 col3.metric("Negative Reviews", len(df_filtered[df_filtered['Sentiment_Label'] == 'Negative']))
+col4.metric("Neutral Reviews", len(df_filtered[df_filtered['Sentiment_Label'] == 'Neutral']))
 
+# Sentiment Distribution
 st.subheader("📈 Sentiment Distribution")
 sentiment_counts = df_filtered['Sentiment_Label'].value_counts()
 fig1, ax1 = plt.subplots(figsize=(6,4))
@@ -49,14 +64,19 @@ ax1.set_ylabel("Count")
 ax1.set_xlabel("Sentiment")
 st.pyplot(fig1)
 
+# Word Cloud
 st.subheader("☁️ Word Cloud")
 all_text = ' '.join(df_filtered['Review'].tolist())
-wordcloud = WordCloud(width=800, height=400, background_color='white', colormap='viridis').generate(all_text)
-fig2, ax2 = plt.subplots(figsize=(10,5))
-ax2.imshow(wordcloud, interpolation='bilinear')
-ax2.axis("off")
-st.pyplot(fig2)
+if all_text.strip() != "":
+    wordcloud = WordCloud(width=800, height=400, background_color='white', colormap='viridis').generate(all_text)
+    fig2, ax2 = plt.subplots(figsize=(10,5))
+    ax2.imshow(wordcloud, interpolation='bilinear')
+    ax2.axis("off")
+    st.pyplot(fig2)
+else:
+    st.info("No reviews to generate Word Cloud.")
 
+# Rating vs Sentiment
 if 'Rating' in df.columns:
     st.subheader("📊 Rating vs Sentiment")
     fig3, ax3 = plt.subplots(figsize=(8,5))
@@ -64,6 +84,7 @@ if 'Rating' in df.columns:
     ax3.set_title("Rating vs Sentiment Distribution")
     st.pyplot(fig3)
 
+# Top Reviews
 st.subheader("🌟 Top Positive Reviews")
 st.write(df_filtered.sort_values(by='Sentiment', ascending=False)[['Review', 'Sentiment']].head(5))
 st.subheader("💀 Top Negative Reviews")
