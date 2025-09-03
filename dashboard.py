@@ -47,11 +47,17 @@ sentiments = st.sidebar.multiselect(
 
 if 'rating' in df.columns or 'Rating' in df.columns:
     rating_col = 'rating' if 'rating' in df.columns else 'Rating'
+    df[rating_col] = pd.to_numeric(df[rating_col], errors='coerce')  # convert to numeric
+    df = df.dropna(subset=[rating_col])  # drop non-numeric ratings
+
     rating_min, rating_max = st.sidebar.slider(
-        "Select Rating Range:", float(df[rating_col].min()), float(df[rating_col].max()),
+        "Select Rating Range:",
+        float(df[rating_col].min()),
+        float(df[rating_col].max()),
         (float(df[rating_col].min()), float(df[rating_col].max()))
     )
-    df_filtered = df[(df['Sentiment_Label'].isin(sentiments)) & 
+
+    df_filtered = df[(df['Sentiment_Label'].isin(sentiments)) &
                      (df[rating_col] >= rating_min) & (df[rating_col] <= rating_max)]
 else:
     df_filtered = df[df['Sentiment_Label'].isin(sentiments)]
